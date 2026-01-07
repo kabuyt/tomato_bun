@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>トマト ぶんぽう N5</title>
+    <style>
+        body { 
+            font-family: 'Hiragino Kaku Gothic ProN', Arial, sans-serif; 
+            text-align: center; 
+            background: #FFF9E6; 
+            color: #444; 
+            margin: 0; 
+            padding: 0; 
+            -webkit-tap-highlight-color: transparent; 
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            user-select: none;
+        }
+
+        /* ヘッダー */
+        header { padding: 15px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .logo { font-size: 30px; }
+        .progress-bar-bg { width: 100%; max-width: 300px; height: 10px; background: #E0E0E0; border-radius: 5px; overflow: hidden; }
+        .progress-bar-fill { height: 100%; background: #66BB6A; width: 0%; transition: width 0.3s; }
+
+        /* メインエリア */
+        #game-area { 
+            flex: 1; 
+            display: flex; 
+            flex-direction: column; 
+            padding: 20px; 
+            max-width: 500px; 
+            margin: 0 auto; 
+            width: 100%; 
+            box-sizing: border-box;
+        }
+
+        /* 質問 */
+        .question-box { margin-bottom: 20px; }
+        .question-text { font-size: 22px; font-weight: bold; color: #333; margin-bottom: 5px; }
+        .question-hint { color: #888; font-size: 14px; }
+        .tomato-mascot { font-size: 60px; margin-bottom: 10px; display:block; animation: float 3s ease-in-out infinite; }
+
+        /* 解答エリア（上の段） */
+        .answer-area { 
+            min-height: 80px; 
+            border-bottom: 3px solid #FFCC80; 
+            background: rgba(255,255,255,0.5);
+            border-radius: 10px;
+            margin-bottom: 20px; 
+            display: flex; 
+            flex-wrap: wrap; 
+            gap: 8px; 
+            padding: 10px; 
+            justify-content: center;
+            align-items: center;
+        }
+        .placeholder { color: #aaa; font-size: 14px; }
+
+        /* 選択肢エリア（下の段） */
+        .choices-area { 
+            display: flex; 
+            flex-wrap: wrap; 
+            gap: 10px; 
+            justify-content: center; 
+            align-content: flex-start;
+            flex: 1; /* 残りのスペースを使う */
+        }
+
+        /* 単語ブロック */
+        .word-block {
+            background: white;
+            border: 2px solid #ddd;
+            border-bottom: 5px solid #ddd;
+            border-radius: 12px;
+            padding: 10px 14px;
+            font-size: 18px;
+            font-weight: bold;
+            color: #555;
+            cursor: pointer;
+            transition: all 0.1s;
+        }
+        .word-block:active {
+            transform: translateY(4px);
+            border-bottom: 2px solid #ddd;
+        }
+        /* 選んだあとの見た目 */
+        .word-in-answer {
+            background: #fff;
+            border-color: #FFCDD2;
+            border-bottom-color: #EF5350;
+            color: #FF5252;
+        }
+
+        /* チェックボタン */
+        .check-btn {
+            margin-top: 10px;
+            padding: 18px;
+            background: #ccc;
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+            border: none;
+            border-radius: 15px;
+            width: 100%;
+            cursor: pointer;
+            pointer-events: none; 
+        }
+        .check-btn.active {
+            background: #66BB6A;
+            box-shadow: 0 4px 0 #388E3C;
+            cursor: pointer;
+            pointer-events: auto;
+        }
+        .check-btn.active:active {
+            transform: translateY(4px);
+            box-shadow: none;
+        }
+
+        /* 結果画面（下から出てくる） */
+        .feedback-overlay {
+            position: fixed; bottom: 0; left: 0; right: 0;
+            padding: 25px; 
+            border-radius: 20px 20px 0 0;
+            transform: translateY(110%);
+            transition: transform 0.3s;
+            text-align: left;
+            box-shadow: 0 -5px 30px rgba(0,0,0,0.2);
+            z-index: 100;
+        }
+        .feedback-overlay.show { transform: translateY(0); }
+        .feedback-correct { background: #d7ffb8; color: #2e7d32; border-top: 5px solid #2e7d32; }
+        .feedback-wrong { background: #ffcdd2; color: #c62828; border-top: 5px solid #c62828; }
+        
+        .next-btn {
+            float: right;
+            padding: 12px 30px;
+            border-radius: 12px;
+            border: none;
+            font-weight: bold;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .btn-correct { background: #66BB6A; color: white; box-shadow: 0 4px 0 #2E7D32; }
+        .btn-wrong { background: #E53935; color: white; box-shadow: 0 4px 0 #B71C1C; }
+
+        @keyframes float { 0% { transform: translateY(0px); } 50% { transform: translateY(-10px); } 100% { transform: translateY(0px); } }
+    </style>
+</head>
+<body>
+
+    <header>
+        <span class="logo">🍅</span>
+        <div class="progress-bar-bg"><div id="progress-bar" class="progress-bar-fill"></div></div>
+    </header>
+
+    <div id="game-area">
+        <div class="question-box">
+            <div class="tomato-mascot" id="mascot">🤔</div>
+            <div class="question-text" id="q-text">Loading...</div>
+            <div class="question-hint">ただしい じゅんばんに ならべてください</div>
+        </div>
+
+        <div class="answer-area" id="answer-slot">
+            <span class="placeholder">ここを タップ してね</span>
+        </div>
+
+        <div class="choices-area" id="choices-slot"></div>
+
+        <button id="check-btn" class="check-btn" onclick="checkAnswer()">チェック (Kiểm tra)</button>
+    </div>
+
+    <div id="feedback" class="feedback-overlay">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div>
+                <strong id="feedback-title" style="font-size:20px; display:block; margin-bottom:5px;"></strong>
+                <span id="feedback-msg" style="font-size:16px;"></span>
+            </div>
+            <button id="next-btn" class="next-btn" onclick="nextQuestion()">つぎへ</button>
+        </div>
+    </div>
+
+    <script>
+        // ★ 文法データ（全部ひらがな！）
+        const grammarData = [
+            {
+                meaning: "わたしは がくせい です。",
+                v_meaning: "Tôi là học sinh.",
+                parts: ["わたし", "は", "がくせい", "です"],
+                extras: ["あなた", "に"], // ダミー
+                comment: "A は B です = A là B"
+            },
+            {
+                meaning: "これは なんですか。",
+                v_meaning: "Cái này là cái gì?",
+                parts: ["これ", "は", "なん", "です", "か"],
+                extras: ["どれ", "を"],
+                comment: "か = ? (しつもん)"
+            },
+            {
+                meaning: "りんごを たべます。",
+                v_meaning: "Tôi ăn táo.",
+                parts: ["りんご", "を", "たべます"],
+                extras: ["のみます", "で", "は"],
+                comment: "O + を + V (どうし)"
+            },
+            {
+                meaning: "あした がっこうへ いきます。",
+                v_meaning: "Ngày mai tôi đi đến trường.",
+                parts: ["あした", "がっこう", "へ", "いきます"],
+                extras: ["に", "きます", "で"],
+                comment: "へ (e) = ほうこう (phương hướng)"
+            },
+            {
+                meaning: "としょかんで べんきょう します。",
+                v_meaning: "Tôi học ở thư viện.",
+                parts: ["としょかん", "で", "べんきょう", "します"],
+                extras: ["に", "を", "へ"],
+                comment: "ばしょ + で + アクション"
+            },
+            {
+                meaning: "コーヒーを のみませんか。",
+                v_meaning: "Bạn có muốn uống cà phê không?",
+                parts: ["コーヒー", "を", "のみません", "か"],
+                extras: ["のみます", "は"],
+                comment: "～ませんか = おさそい (Mời mọc)"
+            },
+            {
+                meaning: "ここに なまえを かいてください。",
+                v_meaning: "Hãy viết tên vào đây.",
+                parts: ["ここ", "に", "なまえ", "を", "かいて", "ください"],
+                extras: ["で", "かきます"],
+                comment: "～てください = おねがい (Yêu cầu)"
+            },
+            {
+                meaning: "まいにち ７じに おきます。",
+                v_meaning: "Hàng ngày tôi dậy lúc 7 giờ.",
+                parts: ["まいにち", "７じ", "に", "おきます"],
+                extras: ["で", "ねます"],
+                comment: "じかん + に (Vào lúc...)"
+            },
+            {
+                meaning: "あの とけいは たかいです。",
+                v_meaning: "Cái đồng hồ kia đắt.",
+                parts: ["あの", "とけい", "は", "たかい", "です"],
+                extras: ["その", "たかく", "ある"],
+                comment: "けいようし (Tính từ) + です"
+            },
+            {
+                meaning: "にちようび なにを しましたか。",
+                v_meaning: "Chủ nhật bạn đã làm gì?",
+                parts: ["にちようび", "なに", "を", "しました", "か"],
+                extras: ["します", "で", "なん"],
+                comment: "しました = かこけい (Quá khứ)"
+            }
+        ];
+
+        let currentIndex = 0;
+        let currentSelection = []; 
+        let currentQuestion = {};
+        let shuffledChoices = [];  
+
+        // ページ読み込み完了時にスタート
+        window.onload = initGame;
+
+        function initGame() {
+            currentIndex = 0;
+            loadQuestion();
+        }
+
+        function loadQuestion() {
+            // リセット
+            currentSelection = [];
+            document.getElementById('feedback').classList.remove('show');
+            document.getElementById('check-btn').classList.remove('active');
+            document.getElementById('mascot').innerText = "🤔";
+            
+            if (currentIndex >= grammarData.length) {
+                finishGame();
+                return;
+            }
+
+            currentQuestion = grammarData[currentIndex];
+            // ベトナム語の意味を表示
+            document.getElementById('q-text').innerText = currentQuestion.v_meaning;
+            
+            // プログレスバー
+            const pct = (currentIndex / grammarData.length) * 100;
+            document.getElementById('progress-bar').style.width = pct + "%";
+
+            // 正解パーツ + ダミー(extras) を混ぜる
+            const extras = currentQuestion.extras || [];
+            const allParts = [...currentQuestion.parts, ...extras];
+
+            // シャッフル
+            shuffledChoices = allParts.sort(() => Math.random() - 0.5);
+            
+            renderUI();
+        }
+
+        function renderUI() {
+            const answerSlot = document.getElementById('answer-slot');
+            const choicesSlot = document.getElementById('choices-slot');
+            
+            answerSlot.innerHTML = "";
+            choicesSlot.innerHTML = "";
+
+            // 1. 解答エリア
+            if (currentSelection.length === 0) {
+                answerSlot.innerHTML = '<span class="placeholder">したの たんごを えらんでね</span>';
+            } else {
+                currentSelection.forEach((word, index) => {
+                    let btn = createWordBtn(word, true);
+                    btn.onclick = () => removeWord(index); // タップで戻す
+                    answerSlot.appendChild(btn);
+                });
+            }
+
+            // 2. 選択肢エリア（残っているものだけ表示）
+            let counts = {};
+            shuffledChoices.forEach(x => { counts[x] = (counts[x] || 0) + 1; });
+            currentSelection.forEach(x => { if(counts[x]) counts[x]--; });
+
+            shuffledChoices.forEach(word => {
+                if (counts[word] > 0) {
+                    let btn = createWordBtn(word, false);
+                    btn.onclick = () => addWord(word); // タップで追加
+                    choicesSlot.appendChild(btn);
+                    counts[word]--; 
+                }
+            });
+
+            // CHECKボタン制御
+            const checkBtn = document.getElementById('check-btn');
+            if (currentSelection.length > 0) {
+                checkBtn.classList.add('active');
+            } else {
+                checkBtn.classList.remove('active');
+            }
+        }
+
+        function createWordBtn(text, isAnswer) {
+            let btn = document.createElement('div');
+            btn.className = isAnswer ? 'word-block word-in-answer' : 'word-block';
+            btn.innerText = text;
+            return btn;
+        }
+
+        function addWord(word) {
+            speak(word); // タップしたら少し読む
+            currentSelection.push(word);
+            renderUI();
+        }
+
+        function removeWord(index) {
+            currentSelection.splice(index, 1);
+            renderUI();
+        }
+
+        function checkAnswer() {
+            const btn = document.getElementById('check-btn');
+            if (!btn.classList.contains('active')) return;
+
+            const userAns = currentSelection.join("");
+            const correctAns = currentQuestion.parts.join("");
+
+            const feedback = document.getElementById('feedback');
+            const title = document.getElementById('feedback-title');
+            const msg = document.getElementById('feedback-msg');
+            const nextBtn = document.getElementById('next-btn');
+
+            feedback.className = "feedback-overlay show";
+
+            if (userAns === correctAns) {
+                // 正解
+                feedback.classList.add("feedback-correct");
+                feedback.classList.remove("feedback-wrong");
+                title.innerText = "せいかい！ (Đúng rồi!)";
+                msg.innerText = currentQuestion.meaning; 
+                document.getElementById('mascot').innerText = "🍅✨";
+                
+                speak(userAns); // 文全体を読み上げ
+                
+                nextBtn.className = "next-btn btn-correct";
+            } else {
+                // 不正解
+                feedback.classList.add("feedback-wrong");
+                feedback.classList.remove("feedback-correct");
+                title.innerText = "ざんねん... (Sai rồi)";
+                msg.innerText = "せいかい: " + currentQuestion.parts.join(" ") + "\n💡 " + currentQuestion.comment;
+                document.getElementById('mascot').innerText = "🍅💦";
+                
+                nextBtn.className = "next-btn btn-wrong";
+            }
+        }
+
+        function nextQuestion() {
+            currentIndex++;
+            loadQuestion();
+        }
+
+        function finishGame() {
+            document.getElementById('game-area').innerHTML = `
+                <h2 style="color:#FF5252; margin-top:50px;">おめでとう！ 🎉</h2>
+                <div style="font-size:80px;">🍅</div>
+                <p>ぜんぶ おわりました！</p>
+                <button class="check-btn active" onclick="location.reload()">もういちど (Làm lại)</button>
+            `;
+            document.getElementById('progress-bar').style.width = "100%";
+        }
+
+        function speak(text) {
+            window.speechSynthesis.cancel();
+            const uttr = new SpeechSynthesisUtterance(text);
+            uttr.lang = "ja-JP";
+            uttr.rate = 0.9;
+            window.speechSynthesis.speak(uttr);
+        }
+    </script>
+</body>
+</html>
